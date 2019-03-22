@@ -13,8 +13,8 @@ const double inf=1e17;
 const int GO_STRAIGHT=0;
 const int TURN_LEFT=1;
 const int TURN_RIGHT=2;
-const double LEFT_PENALTY=10.0;
-const double RIGHT_PENALTY=20.0;
+const double LEFT_PENALTY=1;
+const double RIGHT_PENALTY=2;
 struct Road
 {
     int id;
@@ -248,6 +248,7 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
         }
     }
     vector<int> ans;
+    cout<<d[T]<<endl;
     ans.clear();
     int now=T;
     while(now!=S)
@@ -258,6 +259,10 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
     }
     return ans;
 }
+bool cmp_planTime(const int &x,const int &y)
+{
+    return car[x].planTime<car[y].planTime;
+}
 void random_add_planTime(int MOD)
 {
     vector<vector<int>> tmp;
@@ -267,18 +272,23 @@ void random_add_planTime(int MOD)
     for(int i=1;i<=n;++i)
     {
         int num=tmp[i].size();
+        sort(tmp[i].begin(),tmp[i].end(),cmp_planTime);
+        double difference=1.0*MOD/num;
+        for(int j=0;j<num;++j)
+            car[tmp[i][j]].planTime=max(car[tmp[i][j]].planTime,int(difference*j));
+       /* cout<<i<<" "<<num<<endl;
         int mod=min(3*num,MOD);
         int mi=0;
         for(int j=1;j<num;++j)
             if(car[tmp[i][j]].planTime<car[tmp[i][mi]].planTime) mi=j;
         for(int j=0;j<num;++j)
-            if(mi!=j) car[tmp[i][j]].planTime+=rand()%mod;
+            if(mi!=j) car[tmp[i][j]].planTime+=rand()%mod;*/
     }
 }
 void solve(string path)
 {
     //sort(car.begin(),car.end(),cmp2);
-    random_add_planTime(750);
+    random_add_planTime(600);
     auto it=car.begin();
     ++it;
     sort(it,car.end(),cmp2);
@@ -330,7 +340,7 @@ int main(int argc, char *argv[])
 	std::string answerPath(argv[4]);
 
 	//////////////////////////////±¾µØ
-   /* string carPath="..\\config\\car.txt";
+    /*string carPath="..\\config\\car.txt";
     string roadPath="..\\config\\road.txt";
     string crossPath="..\\config\\cross.txt";
     string answerPath="..\\config\\answer.txt";
