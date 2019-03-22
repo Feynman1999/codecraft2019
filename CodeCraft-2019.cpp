@@ -10,6 +10,11 @@
 #define mp make_pair
 using namespace std;
 const double inf=1e17;
+const int GO_STRAIGHT=0;
+const int TURN_LEFT=1;
+const int TURN_RIGHT=2;
+const double LEFT_PENALTY=10.0;
+const double RIGHT_PENALTY=20.0;
 struct Road
 {
     int id;
@@ -47,26 +52,28 @@ struct Car
     int to;
     int speed;
     int planTime;
-    bool operator < (const Car &x) const
-    {
-        if(speed!=x.speed) return speed<x.speed;
-        return planTime<x.planTime;
-    }
     void output()
     {
         cout<<id<<" "<<from<<" "<<to<<" "<<speed<<" "<<planTime<<endl;
     }
 };
+bool cmp1(const Car &a,const Car &b)
+{
+    if(a.speed!=b.speed) return a.speed<b.speed;
+    return a.planTime<b.planTime;
+}
+bool cmp2(const Car &a,const Car &b)
+{
+    if(a.planTime!=b.planTime) return a.planTime<b.planTime;
+    return a.speed<b.speed;
+}
 struct Cross
 {
     int id;
-    int up;
-    int right;
-    int down;
-    int left;
+    int dir[4];
     void output()
     {
-        cout<<id<<" "<<up<<" "<<right<<" "<<down<<" "<<left<<endl;
+        cout<<id<<" "<<dir[0]<<" "<<dir[1]<<" "<<dir[2]<<" "<<dir[3]<<endl;
     }
 };
 vector<vector<pair<int,int>>> g;
@@ -162,13 +169,13 @@ void readcross(string path)
         s>>ch;
         s>>tmp.id;
         s>>ch;
-        s>>tmp.up;
+        s>>tmp.dir[0];
         s>>ch;
-        s>>tmp.right;
+        s>>tmp.dir[1];
         s>>ch;
-        s>>tmp.down;
+        s>>tmp.dir[2];
         s>>ch;
-        s>>tmp.left;
+        s>>tmp.dir[3];
         s>>ch;
         cross.push_back(tmp);
     }
@@ -196,11 +203,24 @@ int Random_drive(int S,int len,vector<int> &ans)
     }
     return S;
 }
+int checkdir(int u,int id,int v)
+{
+    int a=-1,b=-1;
+    for(int i=0;i<4;++i)
+    {
+        if(cross[id].dir[i]==u) a=i;
+        if(cross[id].dir[i]==v) b=i;
+    }
+    if(a==-1||b==-1) return GO_STRAIGHT;
+    if((a+2)%4==b) return GO_STRAIGHT;
+    if((a+1)%4==b) return TURN_LEFT;
+    return TURN_RIGHT;
+}
 vector<int> dijkstra(int S,int T,int speed,int start_time)
 {
     //cout<<S<<endl;
     for(int i=0;i<=n;++i) d[i]=inf,pre[i]=mp(0,0),done[i]=0;
-    d[S]=0;
+    d[S]=1.0*start_time;
     while(!q.empty()) q.pop();
     q.push(mp(1.0*start_time,S));
     while(!q.empty())
@@ -215,10 +235,14 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
         {
             int v=x.first;
             Road edge=road[x.second];
-            if(now.first+1.0*edge.length/min(edge.query(int(now.first)),speed)<d[v])
+            double data=now.first+1.0*edge.length/min(edge.query(int(now.first)),speed);
+            int dir=checkdir(road[pre[u].second].id,u,edge.id);
+            if(dir==TURN_LEFT) data+=LEFT_PENALTY;
+            if(dir==TURN_RIGHT) data+=RIGHT_PENALTY;
+            if(data<d[v])
             {
                 pre[v]=mp(u,x.second);
-                d[v]=now.first+1.0*edge.length/min(edge.query(int(now.first)),speed);
+                d[v]=data;
                 q.push(mp(d[v],v));
             }
         }
@@ -234,11 +258,31 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
     }
     return ans;
 }
-
+void random_add_planTime(int MOD)
+{
+    vector<vector<int>> tmp;
+    tmp.resize(n+1);
+    for(int i=1;i<=n;++i) tmp[i].clear();
+    for(int i=1;i<=T;++i) tmp[car[i].from].push_back(i);
+    for(int i=1;i<=n;++i)
+    {
+        int num=tmp[i].size();
+        int mod=min(3*num,MOD);
+        int mi=0;
+        for(int j=1;j<num;++j)
+            if(car[tmp[i][j]].planTime<car[tmp[i][mi]].planTime) mi=j;
+        for(int j=0;j<num;++j)
+            if(mi!=j) car[tmp[i][j]].planTime+=rand()%mod;
+    }
+}
 void solve(string path)
 {
-    sort(car.begin(),car.end());
-
+    //sort(car.begin(),car.end(),cmp2);
+    random_add_planTime(750);
+    auto it=car.begin();
+    ++it;
+    sort(it,car.end(),cmp2);
+    cout<<"sort ok!"<<endl;
     dijkstra_init();
     ofstream out(path);
     for(int i=1;i<=T;++i)
@@ -250,7 +294,7 @@ void solve(string path)
         //for(auto x:tmp) cout<<x<<" ";
         //cout<<endl;
         //int tmp_len=tmp.size();
-        car[i].planTime+=rand()%100;
+      //  car[i].planTime+=rand()%100;
         ans=dijkstra(car[i].from,car[i].to,car[i].speed,car[i].planTime);
         //for(int i=tmp_len-1;i>=0;--i) ans.push_back(tmp[i]);
         ans.push_back(car[i].planTime);
@@ -289,13 +333,13 @@ int main(int argc, char *argv[])
    /* string carPath="..\\config\\car.txt";
     string roadPath="..\\config\\road.txt";
     string crossPath="..\\config\\cross.txt";
-    string answerPath="..\\config\\answer.txt";*/
+    string answerPath="..\\config\\answer.txt";
 
 
 	std::cout << "carPath is " << carPath << std::endl;
 	std::cout << "roadPath is " << roadPath << std::endl;
 	std::cout << "crossPath is " << crossPath << std::endl;
-	std::cout << "answerPath is " << answerPath << std::endl;
+	std::cout << "answerPath is " << answerPath << std::endl;*/
 
 
 	// TODO:read input filebuf
