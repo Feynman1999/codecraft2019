@@ -9,6 +9,7 @@
 #include <time.h>
 #include <assert.h>
 #include <cmath>
+#include <map>
 #define mp make_pair
 using namespace std;
 const double inf=1e17;
@@ -17,7 +18,10 @@ const int TURN_LEFT=1;
 const int TURN_RIGHT=2;
 const double LEFT_PENALTY=2;
 const double RIGHT_PENALTY=4;
-const int Lucky_number=500;
+const double Cross_penalty_alpha=20.0;
+const int Lucky_number=535;
+const double Time_reduction_rate=1.0;
+map<int,int> road_id_to_index;
 struct Road
 {
     int id;
@@ -48,6 +52,7 @@ struct Road
         cout<<id<<" "<<length<<" "<<speed<<" "<<channel<<" "<<from<<" "<<to<<" "<<isDuplex<<endl;
     }
 };
+vector<Road> road;
 struct Car
 {
     int id;
@@ -62,12 +67,13 @@ struct Car
         cout<<id<<" "<<from<<" "<<to<<" "<<speed<<" "<<planTime<<endl;
     }
 };
+vector<Car> car;
 bool cmp1(const Car &a,const Car &b)
 {
     if(a.speed!=b.speed) return a.speed<b.speed;
     return a.planTime<b.planTime;
 }
-bool cmp2(const Car &a,const Car &b)
+bool cmp_value(const Car &a,const Car &b)
 {
     return a.value>b.value;
 }
@@ -99,11 +105,15 @@ struct Cross
         sum=round(1.0*sum/(r-l+1));
         return sum;
     }
-    int query_penalty(int t)
+    double query_penalty(int t)
     {
-        if(query_car_num(t)<=get_road_num()*2) return 0;
-        int num=query_car_num(t)*get_road_num();
+        /*if(query_car_num(t)<=get_road_num()) return 0;
+        double num=Cross_penalty_alpha*query_car_num(t)/get_road_num();
         //if(num<=get_road_num()*2) num=0;
+        return num;*/
+
+        if(query_car_num(t)<=get_road_num()*2) return 0;
+        double num=query_car_num(t)*get_road_num();
         return num;
     }
     int get_road_num()
@@ -118,9 +128,9 @@ struct Cross
     }
 };
 vector<vector<pair<int,int>>> g;
-vector<Car> car;
+//vector<Car> car;
 int T;
-vector<Road> road;
+//vector<Road> road;
 int m;
 vector<Cross> cross;
 int n;
@@ -188,6 +198,7 @@ void readroad(string path)
         s>>ch;
         s>>tmp.isDuplex;
         road.push_back(tmp);
+        road_id_to_index[tmp.id]=m;
         //cout<<tmp.from<<" "<<tmp.to<<" "<<m<<end;
         addedge(tmp.from,tmp.to,m);
         if(tmp.isDuplex) addedge(tmp.to,tmp.from,m);
@@ -226,12 +237,13 @@ void readcross(string path)
     //for(auto x:cross) x.output();
 }
 vector<bool> done;
-vector<double> d;
+vector<double> d,actual_d;
 vector<pair<int,int>> pre;   //<pre_cross,through_road>
 void dijkstra_init()
 {
     done.resize(n+1);
     d.resize(n+1);
+    actual_d.resize(n+1);
     pre.resize(n+1);
 }
 priority_queue<pair<double,int>,vector<pair<double,int>>,greater<pair<double,int>>> q;
@@ -253,9 +265,9 @@ double cal_value(int S,int T,int speed,int start_time)
 {
     //cout<<S<<" "<<T<<" "<<speed<<" "<<start_time<<endl;
     for(int i=0;i<=n;++i) d[i]=inf,done[i]=0;
-    d[S]=1.0*start_time;
+    d[S]=0;
     while(!q.empty()) q.pop();
-    q.push(mp(1.0*start_time,S));
+    q.push(mp(0,S));
     while(!q.empty())
     {
         pair<double,int> now=q.top();
@@ -283,11 +295,12 @@ double cal_value(int S,int T,int speed,int start_time)
 vector<int> dijkstra(int S,int T,int speed,int start_time)
 {
     //cout<<S<<endl;
-    for(int i=0;i<=n;++i) d[i]=inf,pre[i]=mp(0,0),done[i]=0;
-    d[S]=1.0*start_time;
-    cross[S].set(int(d[S]));
+    for(int i=0;i<=n;++i) d[i]=actual_d[i]=inf,pre[i]=mp(0,0),done[i]=0;
+    d[S]=0;
+    actual_d[S]=d[S];
+    cross[S].set(start_time+round(d[S]));
     while(!q.empty()) q.pop();
-    q.push(mp(1.0*start_time,S));
+    q.push(mp(d[S],S));
     while(!q.empty())
     {
         pair<double,int> now=q.top();
@@ -300,8 +313,8 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
         {
             int v=x.first;
             Road edge=road[x.second];
-            double time_in_road=1.0*edge.length/min(edge.query(int(now.first)),speed);
-            double data=now.first+time_in_road+cross[v].query_penalty(int(now.first+time_in_road));
+            double time_in_road=1.0*edge.length/min(edge.query(start_time+round(Time_reduction_rate*actual_d[u])),speed);
+            double data=now.first+time_in_road+cross[v].query_penalty(start_time+round(Time_reduction_rate*actual_d[u]+time_in_road));
             int dir=checkdir(road[pre[u].second].id,u,edge.id);
             if(dir==TURN_LEFT) data+=LEFT_PENALTY;
             if(dir==TURN_RIGHT) data+=RIGHT_PENALTY;
@@ -309,6 +322,7 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
             {
                 pre[v]=mp(u,x.second);
                 d[v]=data;
+                actual_d[v]=actual_d[u]+time_in_road;
                 q.push(mp(d[v],v));
             }
         }
@@ -320,16 +334,16 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
     while(now!=S)
     {
         ans.push_back(road[pre[now].second].id);
-        road[pre[now].second].set(int(d[pre[now].first]),int(d[now]),speed);
-        cross[now].set(int(d[now]));
+        road[pre[now].second].set(start_time+round(Time_reduction_rate*actual_d[pre[now].first]),start_time+round(Time_reduction_rate*actual_d[now]),speed);
+        cross[now].set(start_time+round(Time_reduction_rate*actual_d[now]));
         now=pre[now].first;
     }
-    cross[now].set(int(d[now]));
+    cross[now].set(start_time+round(Time_reduction_rate*actual_d[now]));
     return ans;
 }
-bool cmp_planTime(const int &x,const int &y)
+bool cmp_arange_time(const int &x,const int &y)
 {
-    return car[x].planTime<car[y].planTime;
+    return car[x].value>car[y].value;
 }
 void random_add_planTime(int MOD)
 {
@@ -341,10 +355,10 @@ void random_add_planTime(int MOD)
     {
         int num=tmp[i].size();
         cross[i].car_start_from_this=num;
-        sort(tmp[i].begin(),tmp[i].end(),cmp_planTime);
+        sort(tmp[i].begin(),tmp[i].end(),cmp_arange_time);
         double difference=1.0*MOD/num;
         for(int j=0;j<num;++j)
-            car[tmp[i][j]].planTime=max(car[tmp[i][j]].planTime,int(difference*j));
+            car[tmp[i][j]].planTime=max(car[tmp[i][j]].planTime,int(round(difference*(j+1))));
        /* cout<<i<<" "<<num<<endl;
         int mod=min(3*num,MOD);
         int mi=0;
@@ -358,11 +372,12 @@ void solve(string path)
 {
     //sort(car.begin(),car.end(),cmp2);
     dijkstra_init();
-    random_add_planTime(Lucky_number);
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed,car[i].planTime);
+    random_add_planTime(Lucky_number);
+
     auto it=car.begin();
     ++it;
-    sort(it,car.end(),cmp2);
+    sort(it,car.end(),cmp_value);
     cout<<"sort ok!"<<endl;
 
     ofstream out(path);
@@ -372,9 +387,9 @@ void solve(string path)
         ans.clear();
         int len;
 
-      /*  int bounder=round(1.0*Lucky_number/cross[car[i].from].car_start_from_this);
+        /*int bounder=round(1.0*Lucky_number/cross[car[i].from].car_start_from_this);
         int l=max(car[i].initTime,car[i].planTime-bounder);
-        int r=car[i].planTime+bounder;
+        int r=car[i].planTime+1;
         int mi=cross[car[l].from].query_car_num(l);
         for(int i=l+1;i<=r;++i)
             mi=min(mi,cross[car[i].from].query_car_num(i));
@@ -429,13 +444,13 @@ int main(int argc, char *argv[])
     /*string carPath="..\\config\\car.txt";
     string roadPath="..\\config\\road.txt";
     string crossPath="..\\config\\cross.txt";
-    string answerPath="..\\config\\answer.txt";
+    string answerPath="..\\config\\answer.txt";*/
 
 
 	std::cout << "carPath is " << carPath << std::endl;
 	std::cout << "roadPath is " << roadPath << std::endl;
 	std::cout << "crossPath is " << crossPath << std::endl;
-	std::cout << "answerPath is " << answerPath << std::endl;*/
+	std::cout << "answerPath is " << answerPath << std::endl;
 
 
 	// TODO:read input filebuf
