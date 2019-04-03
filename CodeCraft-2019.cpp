@@ -9,19 +9,23 @@
 #include <time.h>
 #include <assert.h>
 #include <cmath>
+#include <set>
 #include <unordered_map>
 #define mp make_pair
 using namespace std;
-int type;
 const double inf=1e17;
 const int GO_STRAIGHT=0;
 const int TURN_LEFT=1;
 const int TURN_RIGHT=2;
-double LEFT_PENALTY=27;
-double RIGHT_PENALTY=57;
-int Lucky_number=1567;
-int Cross_penalty_alpha = 50;
+const double LEFT_PENALTY=10;
+const double RIGHT_PENALTY=30;
+const int Lucky_number=1525;
+const int Cross_penalty_alpha = 60;
 
+
+unordered_map<int,int> Cross_id_to_index;
+unordered_map<int,int> Car_id_to_index;
+unordered_map<int,int> Road_id_to_index;
 struct Road
 {
     int id;
@@ -53,7 +57,7 @@ struct Road
     {
         if(l>=mi.size()) return speed;
         if(num[l]==0) return speed;
-        return min(1.0*speed,mi[l]-2);
+        return min(1.0*speed,mi[l]);
     }
     void output()
     {
@@ -67,11 +71,14 @@ struct Car
     int to;
     int speed;
     int initTime;
+    bool priority;
+    bool preset;
     int planTime;
     double value;
+    vector<int> path;
     void output()
     {
-        cout<<id<<" "<<from<<" "<<to<<" "<<speed<<" "<<planTime<<endl;
+        cout<<id<<" "<<from<<" "<<to<<" "<<speed<<" "<<planTime<<" "<<priority<<" "<<preset<<endl;
     }
 };
 bool cmp1(const Car &a,const Car &b)
@@ -81,9 +88,11 @@ bool cmp1(const Car &a,const Car &b)
 }
 bool cmp2(const Car &a,const Car &b)
 {
+    //if(a.priority!=b.priority) return a.priority>b.priority;
+    if(a.preset!=b.preset) return a.preset>b.preset;
     return a.value>b.value;
 }
-unordered_map<int,int> Cross_id_to_index;
+
 struct Cross
 {
     int id;
@@ -112,27 +121,16 @@ struct Cross
         sum=round(1.0*sum/(r-l+1));
         return sum;
     }
-        double query_penalty(int t)
+    double query_penalty(int t)
     {
+        if(query_car_num(t)<=2*get_road_num()) return 0;
+        double num=Cross_penalty_alpha*query_car_num(t)/get_road_num();
+        //if(num<=get_road_num()*2) num=0;
+        return num;
+
         /*if(query_car_num(t)<=get_road_num()*2) return 0;
-        double num=Cross_penalty_alpha*query_car_num(t)/get_road_num();
-        //if(num<=get_road_num()*2) num=0;
+        double num=query_car_num(t)*get_road_num();
         return num;*/
-        if(type==1)
-        {
-                    if(query_car_num(t)<=get_road_num()) return 0;
-        double num=Cross_penalty_alpha*query_car_num(t)/get_road_num();
-        //if(num<=get_road_num()*2) num=0;
-        return num;
-        }
-        else
-        {
-
-
-        if(query_car_num(t)<=get_road_num()) return 0;
-        double num=7*query_car_num(t)*get_road_num();
-        return num;
-        }
     }
 
     int get_road_num()
@@ -156,7 +154,7 @@ int n;
 void addedge(int from,int to,int id)
 {
     //cout<<from<<" "<<to<<" "<<id;
-    cout<<from<<" "<<to<<" "<<id<<endl;
+    //cout<<from<<" "<<to<<" "<<id<<endl;
     g[from].push_back(mp(to,id));
 }
 void readcar(string path)
@@ -165,7 +163,7 @@ void readcar(string path)
     string info;
     getline(in,info);
     car.clear();
-    car.push_back({0,0,0,0,0,0,0.0});
+    car.push_back(Car());
     while(getline(in,info))
     {
         ++T;
@@ -183,7 +181,12 @@ void readcar(string path)
         s>>tmp.speed;
         s>>ch;
         s>>tmp.initTime;
+        s>>ch;
+        s>>tmp.priority;
+        s>>ch;
+        s>>tmp.preset;
         tmp.planTime=tmp.initTime;
+        Car_id_to_index[tmp.id]=T;
         car.push_back(tmp);
     }
     //for(auto x:car) x.output();
@@ -195,7 +198,7 @@ void readroad(string path)
     string info;
     getline(in,info);
     road.clear();
-    road.push_back({0,0,0,0,0,0,0});
+    road.push_back(Road());
     while(getline(in,info))
     {
         ++m;
@@ -219,6 +222,7 @@ void readroad(string path)
         s>>tmp.isDuplex;
         tmp.from=Cross_id_to_index[tmp.from];
         tmp.to=Cross_id_to_index[tmp.to];
+        Road_id_to_index[tmp.id]=m;
         road.push_back(tmp);
         //cout<<tmp.from<<" "<<tmp.to<<" "<<m<<end;
         addedge(tmp.from,tmp.to,m);
@@ -232,7 +236,7 @@ void readcross(string path)
     string info;
     getline(in,info);
     cross.clear();
-    cross.push_back({0,0,0,0,0});
+    cross.push_back(Cross());
     while(getline(in,info))
     {
         ++n;
@@ -257,6 +261,31 @@ void readcross(string path)
     g.resize(n+1);
     for(int i=0;i<=n;++i) g[i].clear();
     //for(auto x:cross) x.output();
+}
+void readpresetAnswer(string path)
+{
+    ifstream in(path);
+    string info;
+    getline(in,info);
+    while(getline(in,info))
+    {
+        char ch;
+        stringstream s(info);
+        int id;
+        s>>ch;
+        s>>id;
+        id=Car_id_to_index[id];
+        s>>ch;
+        s>>car[id].planTime;
+        while(true)
+        {
+            s>>ch;
+            if(ch==')') break;
+            int x;
+            s>>x;
+            car[id].path.push_back(x);
+        }
+    }
 }
 vector<bool> done;
 vector<double> d,actual_d;
@@ -319,7 +348,7 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
     //cout<<S<<endl;
     for(int i=0;i<=n;++i) actual_d[i]=d[i]=inf,pre[i]=mp(0,0),done[i]=0;
     d[S]=1.0*start_time;
-    cross[S].set(int(d[S]));
+    //cross[S].set(int(d[S]));
     actual_d[S]=1.0*start_time;
     while(!q.empty()) q.pop();
     q.push(mp(1.0*start_time,S));
@@ -356,46 +385,82 @@ vector<int> dijkstra(int S,int T,int speed,int start_time)
     while(now!=S)
     {
         ans.push_back(road[pre[now].second].id);
-        road[pre[now].second].set(int(actual_d[pre[now].first]),int(actual_d[now]),speed);
-        cross[now].set(int(actual_d[now]));
+        //road[pre[now].second].set(int(actual_d[pre[now].first]),int(actual_d[now]),speed);
+        //cross[now].set(int(actual_d[now]));
         now=pre[now].first;
     }
-    cross[now].set(int(actual_d[now]));
+    //cross[now].set(int(actual_d[now]));
+    reverse(ans.begin(),ans.end());
     return ans;
+}
+void update_model(double now,int u,const vector<int>& path ,int speed)
+{
+    cross[u].set(int(now));
+    for(auto road_id:path)
+    {
+        Road &edge=road[Road_id_to_index[road_id]];
+        //cout<<edge.id<<" ";
+        double time_in_road=1.0*edge.length/min(edge.query(int(now)),1.0*speed);
+        edge.set(int(now),int(now+time_in_road),speed);
+        if(edge.from==u) u=edge.to;else u=edge.from;
+        now+=time_in_road;
+        cross[u].set(int(now));
+        //cout<<u<<" "<<now<<endl;
+    }
+    //cout<<endl;
 }
 bool cmp_planTime(const int &x,const int &y)
 {
     return car[x].planTime<car[y].planTime;
 }
-void random_add_planTime(int MOD)
+void random_add_planTime_priority(int MOD)
 {
     vector<vector<int>> tmp;
     tmp.resize(n+1);
     for(int i=1;i<=n;++i) tmp[i].clear();
-    for(int i=1;i<=T;++i) tmp[car[i].from].push_back(i);
+    for(int i=1;i<=T;++i)
+        if(car[i].priority||(car[i].preset&&car[i].planTime<=MOD))
+           tmp[car[i].from].push_back(i);
     for(int i=1;i<=n;++i)
     {
         int num=tmp[i].size();
         //cout<<i<<" : "<<num<<endl;
-        cross[i].car_start_from_this=num;
+        //cross[i].car_start_from_this=num;
         sort(tmp[i].begin(),tmp[i].end(),cmp_planTime);
         double difference=1.0*MOD/num;
         for(int j=0;j<num;++j)
-            car[tmp[i][j]].planTime=max(car[tmp[i][j]].planTime,int(difference*j));
-       /* cout<<i<<" "<<num<<endl;
-        int mod=min(3*num,MOD);
-        int mi=0;
-        for(int j=1;j<num;++j)
-            if(car[tmp[i][j]].planTime<car[tmp[i][mi]].planTime) mi=j;
+            if(!car[tmp[i][j]].preset)
+                car[tmp[i][j]].planTime=max(car[tmp[i][j]].planTime,int(difference*(j+1)));
+       // for(int j=0;j<num;++j) cout<<car[tmp[i][j]].planTime<<" ";
+        //cout<<endl;
+    }
+}
+void random_add_planTime(int lower,int upper)
+{
+    vector<vector<int>> tmp;
+    tmp.resize(n+1);
+    for(int i=1;i<=n;++i) tmp[i].clear();
+    for(int i=1;i<=T;++i)
+        //if(!car[i].priority||(car[i].preset&&car[i].planTime>=lower))
+            tmp[car[i].from].push_back(i);
+    for(int i=1;i<=n;++i)
+    {
+        int num=tmp[i].size();
+        //cout<<i<<" : "<<num<<endl;
+        //cross[i].car_start_from_this=num;
+        sort(tmp[i].begin(),tmp[i].end(),cmp_planTime);
+        double difference=1.0*(upper-lower)/num;
         for(int j=0;j<num;++j)
-            if(mi!=j) car[tmp[i][j]].planTime+=rand()%mod;*/
+            if(!car[tmp[i][j]].preset)
+                car[tmp[i][j]].planTime=max(car[tmp[i][j]].planTime,lower+int(difference*j));
     }
 }
 void solve(string path)
 {
     //sort(car.begin(),car.end(),cmp2);
     dijkstra_init();
-    random_add_planTime(Lucky_number);
+  //  random_add_planTime_priority(1000);
+    random_add_planTime(1,3350);
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed,car[i].planTime);
     auto it=car.begin();
     ++it;
@@ -405,46 +470,70 @@ void solve(string path)
     ofstream out(path);
     for(int i=1;i<=T;++i)
     {
+        //car[i].output();
         vector<int> ans;
         ans.clear();
-        int len;
+        if(car[i].preset) ans=car[i].path;
+        else
+            ans=dijkstra(car[i].from,car[i].to,car[i].speed,car[i].planTime);
+        //cout<<car[i].id<<" : ";
+        update_model(car[i].planTime,car[i].from,ans,car[i].speed);
 
-      /*  int bounder=round(1.0*Lucky_number/cross[car[i].from].car_start_from_this);
-        int l=max(car[i].initTime,car[i].planTime-bounder);
-        int r=car[i].planTime+bounder;
-        int mi=cross[car[l].from].query_car_num(l);
-        for(int i=l+1;i<=r;++i)
-            mi=min(mi,cross[car[i].from].query_car_num(i));
-        vector<int> tmp;
-        tmp.clear();
-        for(int i=l;i<=r;++i)
-            if(cross[car[i].from].query_car_num(i)==mi) tmp.push_back(i);
-        len=rand()%(int(tmp.size()));
-        car[i].planTime=tmp[len];*/
-        //tmp.clear();
-        //int start=Random_drive(car[i].from,0,tmp);
-        //for(auto x:tmp) cout<<x<<" ";
-        //cout<<endl;
-        //int tmp_len=tmp.size();
-      //  car[i].planTime+=rand()%100;
-     // cout<<i<<endl;
-        ans=dijkstra(car[i].from,car[i].to,car[i].speed,car[i].planTime);
-        //for(int i=tmp_len-1;i>=0;--i) ans.push_back(tmp[i]);
-        ans.push_back(car[i].planTime);
-        ans.push_back(car[i].id);
-        //ans.push_back(car[i].from);
-        reverse(ans.begin(),ans.end());
-        out<<"(";
-        len=ans.size();
-        for(int i=0;i<len-1;++i) out<<ans[i]<<",";
-        out<<ans[len-1]<<")"<<endl;
-        //cout<<"now "<<i<<endl;
+      //  if(car[i].id==19051) car[i].output();
+
+        if(!car[i].preset)
+        {
+            //for(int i=tmp_len-1;i>=0;--i) ans.push_back(tmp[i]);
+            out<<"("<<car[i].id<<","<<car[i].planTime<<",";
+            int len=ans.size();
+            for(int i=0;i<len-1;++i) out<<ans[i]<<",";
+            out<<ans[len-1]<<")"<<endl;
+        }
     }
-}
-void write(string path)
-{
+
 
 }
+void cal_coefficient()
+{
+    int priority_car=0;
+    for(int i=1;i<=T;++i)
+        if(car[i].priority) ++priority_car;
+    cout<<"0.05*"<<T<<"/"<<priority_car<<"="<<0.05*T/priority_car<<endl;
+
+    int max_speed=0,min_speed=1000;
+    int priority_max_speed=0,priority_min_speed=1000;
+    for(int i=1;i<=T;++i)
+    {
+        max_speed=max(max_speed,car[i].speed);
+        min_speed=min(min_speed,car[i].speed);
+        if(car[i].priority)
+        {
+            priority_max_speed=max(priority_max_speed,car[i].speed);
+            priority_min_speed=min(priority_min_speed,car[i].speed);
+        }
+    }
+    cout<<"0.2375*("<<max_speed<<"/"<<min_speed<<")/("<<priority_max_speed<<"/"<<priority_min_speed<<")="<<0.2375*(1.0*max_speed/min_speed)/(1.0*priority_max_speed/priority_min_speed)<<endl;
+
+    set<int> from,to,priority_from,priority_to;
+    from.clear();
+    to.clear();
+    priority_from.clear();
+    priority_to.clear();
+    for(int i=1;i<=T;++i)
+    {
+        from.insert(car[i].from);
+        to.insert(car[i].to);
+        if(car[i].priority)
+        {
+            priority_from.insert(car[i].from);
+            priority_to.insert(car[i].to);
+        }
+    }
+    cout<<"0.2375*"<<from.size()<<"/"<<priority_from.size()<<"="<<0.2375*int(from.size())/int(priority_from.size())<<endl;
+    cout<<"0.2375*"<<to.size()<<"/"<<priority_to.size()<<"="<<0.2375*int(to.size())/int(priority_to.size())<<endl;
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -453,26 +542,32 @@ int main(int argc, char *argv[])
     cin.tie(0);
     std::cout << "Begin" << std::endl;
 
-    //////////////////////////////??
-
-	if(argc < 5){
+	if(argc < 6){
 		std::cout << "please input args: carPath, roadPath, crossPath, answerPath" << std::endl;
 		exit(1);
 	}
-    std::string carPath(argv[1]);
+
+	std::string carPath(argv[1]);
 	std::string roadPath(argv[2]);
 	std::string crossPath(argv[3]);
-	std::string answerPath(argv[4]);
+	std::string presetAnswerPath(argv[4]);
+	std::string answerPath(argv[5]);
 
-	//////////////////////////////????
-   /* string carPath="..\\config\\car.txt";
+
+    //////////////////////////////锟斤拷锟斤拷
+    /*string carPath="..\\config\\car.txt";
     string roadPath="..\\config\\road.txt";
     string crossPath="..\\config\\cross.txt";
-    string answerPath="..\\config\\answer.txt";
+    string presetAnswerPath="..\\config\\presetAnswer.txt";
+    string answerPath="..\\config\\answer.txt";*/
+
+
 	std::cout << "carPath is " << carPath << std::endl;
 	std::cout << "roadPath is " << roadPath << std::endl;
 	std::cout << "crossPath is " << crossPath << std::endl;
-	std::cout << "answerPath is " << answerPath << std::endl;*/
+	std::cout << "presetAnswerPath is " << presetAnswerPath << std::endl;
+	std::cout << "answerPath is " << answerPath << std::endl;
+
 
 
 	// TODO:read input filebuf
@@ -482,21 +577,11 @@ int main(int argc, char *argv[])
 	readroad(roadPath);
 	for(int i=1;i<=T;++i) car[i].from=Cross_id_to_index[car[i].from];
 	for(int i=1;i<=T;++i) car[i].to=Cross_id_to_index[car[i].to];
-
-	if(m==236)
-    {
-        type=1;
-        LEFT_PENALTY=40;
-        RIGHT_PENALTY=80;
-        Lucky_number=1425;
-        Cross_penalty_alpha = 40;
-    }
-    else
-    {
-        type=2;
-    }
-
+    readpresetAnswer(presetAnswerPath);
+    //for(auto x:car[Car_id_to_index[21701]].path) cout<<x<<" ";cout<<endl;
 	// TODO:process
+	//cal_coefficient();
+
 	solve(answerPath);
 	/*freopen("ce.out","w",stdout);
 	for(int i=1;i<=n;++i)
@@ -506,7 +591,7 @@ int main(int argc, char *argv[])
         }*/
 	// TODO:write output file
     //write(answerPath);
+    //car[Car_id_to_index[19051]].output();
 	return 0;
 }
-
 
