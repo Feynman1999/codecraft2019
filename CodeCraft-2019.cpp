@@ -441,7 +441,7 @@ void random_add_planTime(int lower,int upper)
     tmp.resize(n+1);
     for(int i=1;i<=n;++i) tmp[i].clear();
     for(int i=1;i<=T;++i)
-        //if(!car[i].priority||(car[i].preset&&car[i].planTime>=lower))
+        if(!car[i].preset||(car[i].preset&&car[i].planTime>=lower&&car[i].planTime<=upper))
             tmp[car[i].from].push_back(i);
     for(int i=1;i<=n;++i)
     {
@@ -460,7 +460,7 @@ void solve(string path)
     //sort(car.begin(),car.end(),cmp2);
     dijkstra_init();
   //  random_add_planTime_priority(1000);
-    random_add_planTime(1,3350);
+    random_add_planTime(700,2400);
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed,car[i].planTime);
     auto it=car.begin();
     ++it;
@@ -594,4 +594,5 @@ int main(int argc, char *argv[])
     //car[Car_id_to_index[19051]].output();
 	return 0;
 }
-
+//700~2400  6204
+//800~2400  6279
