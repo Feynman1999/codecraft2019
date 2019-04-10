@@ -22,8 +22,8 @@ const double LEFT_PENALTY=10;
 const double RIGHT_PENALTY=30;
 
 const double Cross_penalty_alpha = 100;
-const double Road_penalty_apha=90;
-const int Update_model_time_interval=1500;
+const double Road_penalty_apha=100;
+const int Update_model_time_interval=2000;
 
 unordered_map<int,int> Cross_id_to_index;
 unordered_map<int,int> Car_id_to_index;
@@ -499,9 +499,10 @@ void reset_model()
 }
 bool cmp_value(const int &x,const int &y)
 {
+    if(car[x].priority!=car[y].priority) return car[x].priority>car[y].priority;
     return car[x].value>car[y].value;
 }
-void random_add_planTime_priority(int lower,int upper)
+void random_add_planTime_priority(int lower,int upper,int number_of_normal_cars)
 {
     vector<vector<int>> H;
     H.resize(n+1);
@@ -521,6 +522,12 @@ void random_add_planTime_priority(int lower,int upper)
         else
             if(car[i].priority)
                 tmp[car[i].from].push_back(i);
+            else
+                if(number_of_normal_cars)
+                {
+                    --number_of_normal_cars;
+                    tmp[car[i].from].push_back(i);
+                }
 
     for(int i=1;i<=n;++i)
     {
@@ -558,7 +565,7 @@ void random_add_planTime_priority(int lower,int upper)
         cout<<endl;
     }*/
 }
-void random_add_planTime(int lower,int upper)
+void random_add_planTime(int lower,int upper,int number_of_normal_cars)
 {
     vector<vector<int>> H;
     H.resize(n+1);
@@ -581,7 +588,8 @@ void random_add_planTime(int lower,int upper)
         }
         else
             if(!car[i].priority)
-                tmp[car[i].from].push_back(i);
+                if(--number_of_normal_cars<0)
+                    tmp[car[i].from].push_back(i);
 
     int sum=0;
     for(int i=1;i<=n;++i)
@@ -628,8 +636,8 @@ void solve(string path)
     //sort(car.begin(),car.end(),cmp2);
     dijkstra_init();
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed);
-    random_add_planTime_priority(1,800);
-    random_add_planTime(900,2400);
+    random_add_planTime_priority(1,800,4000);
+    random_add_planTime(870,2300,4000);
 
     auto it=car.begin();
     ++it;
@@ -738,6 +746,7 @@ int main(int argc, char *argv[])
     //////////////////////////////锟斤拷锟斤拷
 
 
+
 	std::cout << "carPath is " << carPath << std::endl;
 	std::cout << "roadPath is " << roadPath << std::endl;
 	std::cout << "crossPath is " << crossPath << std::endl;
@@ -782,4 +791,4 @@ int main(int argc, char *argv[])
     //car[Car_id_to_index[19051]].output();
 	return 0;
 }
-
+//(750~900 950~2400) 4089
