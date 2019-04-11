@@ -636,8 +636,9 @@ void solve(string path)
     //sort(car.begin(),car.end(),cmp2);
     dijkstra_init();
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed);
+
     random_add_planTime_priority(1,800,4000);
-    random_add_planTime(870,2300,4000);
+    random_add_planTime(850,2250,4000);
 
     auto it=car.begin();
     ++it;
@@ -730,7 +731,7 @@ int main(int argc, char *argv[])
     std::ios::sync_with_stdio(false);
     cin.tie(0);
     std::cout << "Begin" << std::endl;
-
+    /*
 	if(argc < 6){
 		std::cout << "please input args: carPath, roadPath, crossPath, answerPath" << std::endl;
 		exit(1);
@@ -741,10 +742,14 @@ int main(int argc, char *argv[])
 	std::string crossPath(argv[3]);
 	std::string presetAnswerPath(argv[4]);
 	std::string answerPath(argv[5]);
-
+	*/
 
     //////////////////////////////锟斤拷锟斤拷
-
+    string carPath="..\\config\\car.txt";
+    string roadPath="..\\config\\road.txt";
+    string crossPath="..\\config\\cross.txt";
+    string presetAnswerPath="..\\config\\presetAnswer.txt";
+    string answerPath="..\\config\\answer.txt";
 
 
 	std::cout << "carPath is " << carPath << std::endl;
@@ -791,4 +796,3 @@ int main(int argc, char *argv[])
     //car[Car_id_to_index[19051]].output();
 	return 0;
 }
-//(750~900 950~2400) 4089
