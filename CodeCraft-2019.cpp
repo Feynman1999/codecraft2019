@@ -637,8 +637,8 @@ void solve(string path)
     dijkstra_init();
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed);
 
-    random_add_planTime_priority(1,800,5000);
-    random_add_planTime(870,2200,5000);
+    random_add_planTime_priority(1,800,6000);
+    random_add_planTime(930,2150,6000);
 
     auto it=car.begin();
     ++it;
