@@ -502,7 +502,7 @@ bool cmp_value(const int &x,const int &y)
     if(car[x].priority!=car[y].priority) return car[x].priority>car[y].priority;
     return car[x].value>car[y].value;
 }
-void random_add_planTime_priority(int lower,int upper,int number_of_normal_cars)
+void random_add_planTime_priority(int lower,int upper,int normal_l,int normal_r=10000000)
 {
     vector<vector<int>> H;
     H.resize(n+1);
@@ -514,6 +514,7 @@ void random_add_planTime_priority(int lower,int upper,int number_of_normal_cars)
     vector<vector<int>> tmp;
     tmp.resize(n+1);
     for(int i=1;i<=n;++i) tmp[i].clear();
+    int normal_car=0;
     for(int i=1;i<=T;++i)
         if(car[i].preset)
         {
@@ -523,11 +524,11 @@ void random_add_planTime_priority(int lower,int upper,int number_of_normal_cars)
             if(car[i].priority)
                 tmp[car[i].from].push_back(i);
             else
-                if(number_of_normal_cars)
-                {
-                    --number_of_normal_cars;
+            {
+                ++normal_car;
+                if(normal_car>=normal_l&&normal_car<=normal_r)
                     tmp[car[i].from].push_back(i);
-                }
+            }
 
     for(int i=1;i<=n;++i)
     {
@@ -565,7 +566,7 @@ void random_add_planTime_priority(int lower,int upper,int number_of_normal_cars)
         cout<<endl;
     }*/
 }
-void random_add_planTime(int lower,int upper,int number_of_normal_cars)
+void random_add_planTime(int lower,int upper,int normal_l,int normal_r=10000000)
 {
     vector<vector<int>> H;
     H.resize(n+1);
@@ -577,6 +578,7 @@ void random_add_planTime(int lower,int upper,int number_of_normal_cars)
     vector<vector<int>> tmp;
     tmp.resize(n+1);
     for(int i=1;i<=n;++i) tmp[i].clear();
+    int normal_car=0;
     for(int i=1;i<=T;++i)
         if(car[i].preset)
         {
@@ -588,9 +590,11 @@ void random_add_planTime(int lower,int upper,int number_of_normal_cars)
         }
         else
             if(!car[i].priority)
-                if(--number_of_normal_cars<0)
+            {
+                ++normal_car;
+                if(normal_car>=normal_l&&normal_car<=normal_r)
                     tmp[car[i].from].push_back(i);
-
+            }
     int sum=0;
     for(int i=1;i<=n;++i)
     {
@@ -637,8 +641,8 @@ void solve(string path)
     dijkstra_init();
     for(int i=1;i<=T;++i) car[i].value=cal_value(car[i].from,car[i].to,car[i].speed);
 
-    random_add_planTime_priority(1,800,6000);
-    random_add_planTime(930,2150,6000);
+    random_add_planTime_priority(1,800,1,8000);
+    random_add_planTime(970,2200,8001);
 
     auto it=car.begin();
     ++it;
@@ -731,7 +735,7 @@ int main(int argc, char *argv[])
     std::ios::sync_with_stdio(false);
     cin.tie(0);
     std::cout << "Begin" << std::endl;
-
+    /*
 	if(argc < 6){
 		std::cout << "please input args: carPath, roadPath, crossPath, answerPath" << std::endl;
 		exit(1);
@@ -742,10 +746,14 @@ int main(int argc, char *argv[])
 	std::string crossPath(argv[3]);
 	std::string presetAnswerPath(argv[4]);
 	std::string answerPath(argv[5]);
+	*/
 
-
-    //////////////////////////////锟斤拷锟斤拷
-
+    //////////////////////////////����
+    string carPath="..\\config\\car.txt";
+    string roadPath="..\\config\\road.txt";
+    string crossPath="..\\config\\cross.txt";
+    string presetAnswerPath="..\\config\\presetAnswer.txt";
+    string answerPath="..\\config\\answer.txt";
 
 
 	std::cout << "carPath is " << carPath << std::endl;
@@ -792,4 +800,5 @@ int main(int argc, char *argv[])
     //car[Car_id_to_index[19051]].output();
 	return 0;
 }
-//(750~900 950~2400) 4089
+//random_add_planTime_priority(1,800,1,9000); random_add_planTime(980,2130,9001);   3500
+//
